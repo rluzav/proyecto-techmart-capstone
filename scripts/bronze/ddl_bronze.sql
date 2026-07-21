@@ -1,0 +1,2 @@
+-- Definición de Tablas (DDL) - Capa Bronze
+-- Proyecto: TechMart Capstone

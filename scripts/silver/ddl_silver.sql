@@ -1,0 +1,2 @@
+-- Definición de Tablas (DDL) - Capa Silver
+-- Proyecto: TechMart Capstone

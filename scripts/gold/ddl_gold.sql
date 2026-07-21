@@ -1,0 +1,2 @@
+-- Definición de Tablas (DDL) - Capa Gold
+-- Proyecto: TechMart Capstone

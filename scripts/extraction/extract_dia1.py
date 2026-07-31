@@ -12,6 +12,6 @@ for p in products:
 with open(f"datasets/api_snapshots/products_{fecha}.json", "w") as f:
     json.dump(products, f, indent=2)
 print(f"{len(products)} productos guardados para {fecha}")
+#Viendo las columnas
 prueba = pd.json_normalize(products)
-pd.set_option('display.max_columns', None)
 print(prueba.head())

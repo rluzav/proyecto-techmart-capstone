@@ -1,1 +1,173 @@
-#
+# Proyecto TechMart Capstone
+
+Proyecto de Data Warehouse desarrollado en SQL Server bajo arquitectura **Bronze / Silver / Gold**. El repositorio integra una fuente externa de productos obtenida desde una API y datos transaccionales internos generados con Python para construir una capa analítica lista para negocio. [1][2]
+
+## Objetivo
+
+El objetivo del proyecto es construir un pipeline de datos por capas que permita extraer, limpiar, modelar y analizar información de ventas. Como resultado final, la solución entrega un modelo dimensional en Gold y consultas de negocio orientadas a análisis comercial. [1][2]
+
+## Fuente de datos
+
+Este proyecto trabaja con dos fuentes principales:
+
+- **API de productos:** [Fake Store API](https://fakestoreapi.com/products), usada para obtener snapshots del catálogo de productos. [1]
+- **Datos OLTP internos:** generados con Python mediante `scripts/extraction/generate_oltp.py` y almacenados como archivos CSV en `datasets/oltp/`. [3]
+
+Además, para poder probar el historial de precios en `dim_product`, se utilizó un segundo snapshot simulado con cambios de precio a través del script `scripts/extraction/simular_dia2.py`. La guía explica que esta simulación es necesaria porque la Fake Store API no cambia precios de forma natural entre extracciones. [1]
+
+## Arquitectura
+
+El proyecto sigue la arquitectura Medallion, separando responsabilidades en tres capas: [1][2]
+
+- **Bronze:** carga cruda de archivos JSON y CSV, sin transformación de negocio. [1]
+- **Silver:** limpieza, estandarización, deduplicación y preparación de datos para consumo analítico. [1]
+- **Gold:** modelo dimensional orientado a negocio con tablas de dimensiones y hechos. [1][2]
+
+Esta separación permite mantener trazabilidad, calidad de datos y una evolución ordenada del pipeline desde la extracción hasta la analítica final. [1]
+
+## Estructura del proyecto
+
+```text
+proyecto-techmart-capstone/
+├── README.md
+├── datasets/
+│   ├── api_snapshots/
+│   │   ├── products_2026-07-30.json
+│   │   └── products_2026-08-06.json
+│   └── oltp/
+│       ├── customers.csv
+│       ├── orders.csv
+│       └── order_items.csv
+├── scripts/
+│   ├── extraction/
+│   │   ├── extract_dia1.py
+│   │   ├── generate_oltp.py
+│   │   └── simular_dia2.py
+│   ├── bronze/
+│   │   ├── ddl_bronze.sql
+│   │   └── proc_load_bronze.sql
+│   ├── silver/
+│   │   ├── ddl_silver.sql
+│   │   └── proc_load_silver.sql
+│   ├── gold/
+│   │   ├── ddl_gold.sql
+│   │   ├── proc_load_gold.sql
+│   │   └── fase4_analitica_negocio.sql
+│   └── init_database.sql
+├── tests/
+│   ├── quality_checks_silver.sql
+│   └── quality_checks_gold.sql
+└── docs/
+    └── (capturas o diagramas)
+```
+
+## Proceso de desarrollo
+
+### Fase 0: extracción y simulación
+
+Primero se obtuvo un snapshot real de productos desde la API mediante `extract_dia1.py`. Luego se generó un segundo snapshot con cambios simulados de precio usando `simular_dia2.py`, con el fin de probar el comportamiento SCD Type 2 en la dimensión de productos. [1]
+
+### Fase 1: Bronze
+
+En Bronze se cargaron los datos tal como llegaron desde la API y los archivos OLTP. Esta capa conserva la estructura original de la fuente y actúa como zona cruda del pipeline. [1]
+
+### Fase 2: Silver
+
+En Silver se aplicaron procesos de limpieza, estandarización y preparación para consumo analítico. La idea principal de esta capa es dejar los datos consistentes antes de modelarlos en Gold. [1]
+
+### Fase 3: Gold
+
+En Gold se construyó el modelo dimensional del proyecto. Esta capa incluye dimensiones, tabla de hechos y una implementación de `dim_product` con SCD Type 2 para conservar el historial de cambios de precio por rango de vigencia. [1][2]
+
+### Fase 4: analítica de negocio
+
+Finalmente, se desarrollaron cuatro consultas de negocio que aplican funciones analíticas y explotan el modelo Gold para responder preguntas comerciales. [1][2]
+
+## Modelo dimensional
+
+La capa Gold está compuesta por los siguientes objetos principales: [1][2]
+
+- `dim_customer`
+- `dim_date`
+- `dim_product` (SCD Type 2)
+- `fact_sales`
+
+`dim_product` conserva historial de precio mediante los campos `valid_from`, `valid_to` e `is_current`, permitiendo identificar qué versión del producto estaba vigente en el momento de cada venta. [1][2]
+
+## Star schema
+El siguiente diagrama muestra la relación entre las tablas de dimensiones y la tabla de hechos en la capa Gold.
+
+![Star Schema](docs/star_schema.png)
+
+
+## Quality checks
+
+El proyecto incluye validaciones de calidad separadas por capa: [4][1]
+
+- `quality_checks_silver.sql`: revisa consistencia y calidad de los datos limpios en Silver. [1]
+- `quality_checks_gold.sql`: valida la integridad analítica en Gold, incluyendo historial real en `dim_product`, vigencia de versiones y consistencia de la fact table con sus dimensiones. [1]
+
+Estas verificaciones ayudan a confirmar que el pipeline carga correctamente y que los resultados de negocio se apoyan en un modelo confiable. [1]
+
+## Analítica de negocio
+
+La Fase 4 responde las siguientes preguntas: [5][6][1]
+
+1. **Ranking de productos más vendidos por categoría**, usando `DENSE_RANK()` para reiniciar el ranking dentro de cada categoría. [5][6]
+2. **Ticket promedio mensual con tendencia**, usando `AVG() OVER()` y `LAG()` para comparar cada mes con el anterior. [5][6]
+3. **Segmentación de clientes**, usando `CTE + CASE` para clasificar clientes según su gasto acumulado. [5][6]
+4. **Impacto del cambio de precio en las ventas**, usando el historial de `dim_product` para comparar comportamiento antes y después del cambio. [5][6][2]
+
+## Resultados
+
+Aquí se muestran las capturas de los resultados obtenidos en SQL Server para las consultas de la Fase Analítica.
+
+
+
+### Ranking por categoría
+![Ranking por categoría](docs/ranking_categoria.png)
+
+### Ticket promedio mensual
+![Ticket promedio mensual](docs/ticket_mensual.png)
+
+### Segmentación de clientes
+![Segmentación de clientes](docs/segmentacion_clientes.png)
+
+### Impacto del cambio de precio
+![Impacto del cambio de precio](docs/impacto_precio.png)
+
+
+## Supuestos de limpieza y modelado
+
+- Se conservaron dos snapshots de productos para poder detectar cambios reales de precio entre extracciones. [1]
+- Los cambios de precio en `dim_product` se identifican comparando cada precio con su valor anterior mediante funciones de ventana. [1][2]
+- La dimensión de productos se modeló como SCD Type 2 para mantener el historial completo de versiones. [1][2]
+- La tabla `fact_sales` debe relacionarse con la versión histórica correcta del producto según la fecha de la venta. [1][2]
+- La segmentación de clientes se define en función del total gastado acumulado por cliente.
+
+## Ejecución del proyecto
+
+Para ejecutar el proyecto desde cero:
+
+1. Ejecutar `scripts/init_database.sql` para crear la base y los esquemas.
+2. Ejecutar la extracción y generación de datos en `scripts/extraction/`.
+3. Cargar la capa Bronze con `proc_load_bronze.sql`. [1]
+4. Cargar la capa Silver con `proc_load_silver.sql`. [1]
+5. Crear y cargar Gold con `ddl_gold.sql` y `proc_load_gold.sql`.
+6. Ejecutar `tests/quality_checks_silver.sql` y `tests/quality_checks_gold.sql`. [1]
+7. Ejecutar `scripts/gold/fase4_analitica_negocio.sql` para consultar los resultados finales.
+
+## Estado de entrega
+
+El proyecto incluye la entrega principal solicitada: [4][1]
+
+- arquitectura Bronze / Silver / Gold,
+- historial real en `dim_product`,
+- quality checks en Silver y Gold,
+- consultas de negocio de la Fase 4 resueltas,
+- estructura de proyecto organizada para revisión.
+
+## Autor
+
+Proyecto realizado por: **Renzo Luza**
+GitHub: [rluzav](https://github.com/rluzav)  

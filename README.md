@@ -209,6 +209,7 @@ Sobre la capa Gold en BigQuery se construyó un dashboard para consumo analític
 
 ## Ejecución del proyecto
 
+### Versión SQL Server
 Para ejecutar el proyecto desde cero:
 
 1. Ejecutar `scripts/init_database.sql` para crear la base y los esquemas.
@@ -219,6 +220,13 @@ Para ejecutar el proyecto desde cero:
 6. Ejecutar `tests/quality_checks_silver.sql` y `tests/quality_checks_gold.sql`. [1]
 7. Ejecutar `scripts/gold/fase4_analitica_negocio.sql` para consultar los resultados finales.
 
+### Versión GCP
+1. Cargar los archivos fuente en GCS.
+2. Crear las tablas externas y datasets en BigQuery.
+3. Abrir el repositorio en Dataform.
+4. Ejecutar primero `bronze`, luego `silver` y luego `gold`.
+5. Revisar los resultados en BigQuery y el dashboard en Looker Studio / Power BI.
+
 ## Estado de entrega
 
 El proyecto incluye la entrega principal solicitada: [4][1]
@@ -228,6 +236,13 @@ El proyecto incluye la entrega principal solicitada: [4][1]
 - quality checks en Silver y Gold,
 - consultas de negocio de la Fase 4 resueltas,
 - estructura de proyecto organizada para revisión.
+- migración a Google Cloud Platform con BigQuery y Dataform.
+- estructura Dataform con archivos `.sqlx` e `includes/macros.js`.
+- historial real en `dim_product` con SCD Type 2.
+- quality checks en Silver y Gold.
+- consultas de negocio resueltas.
+- dashboard final en Looker Studio / Power BI.
+
 
 ## Autor
 

@@ -199,6 +199,109 @@ Sobre la capa Gold en BigQuery se construyó un dashboard para consumo analític
 ### Resumen de Capa Gold
 ![Resumen capa Gold](docs/gcp_query_resumen.PNG)
 
+### Dim Product
+```text
+config {
+  type: "table",
+  schema: "gold",
+  name: "dim_product",
+  tags: ["gold"]
+}
+
+js {
+  const { clean_string, surrogate_key } = require("includes/macros");
+}
+
+with base_products as (
+  select
+    cast(product_id as int64) as product_id,
+    ${clean_string("title")} as product_title,
+    upper(${clean_string("category")}) as category,
+    cast(price as numeric) as price,
+    coalesce(cast(rating_rate as numeric), 0) as rating_rate,
+    coalesce(cast(rating_count as int64), 0) as rating_count,
+    cast(extraction_date as date) as extraction_date
+  from ${ref("slv_api_products")}
+),
+
+ordered_products as (
+  select
+    *,
+    lag(price) over (
+      partition by product_id
+      order by extraction_date
+    ) as previous_price
+  from base_products
+),
+
+change_points as (
+  select
+    *,
+    case
+      when previous_price is null then 1
+      when price != previous_price then 1
+      else 0
+    end as is_new_version
+  from ordered_products
+),
+
+versioned_products as (
+  select
+    *,
+    sum(is_new_version) over (
+      partition by product_id
+      order by extraction_date
+      rows between unbounded preceding and current row
+    ) as version_number
+  from change_points
+),
+
+scd2_base as (
+  select
+    product_id,
+    version_number,
+    any_value(product_title) as product_title,
+    any_value(category) as category,
+    any_value(price) as price,
+    any_value(rating_rate) as rating_rate,
+    any_value(rating_count) as rating_count,
+    min(extraction_date) as valid_from
+  from versioned_products
+  group by
+    product_id,
+    version_number
+),
+
+scd2_final as (
+  select
+    ${surrogate_key(["product_id", "valid_from"])} as product_key,
+    product_id,
+    product_title,
+    category,
+    price,
+    rating_rate,
+    rating_count,
+    valid_from,
+    coalesce(
+      lead(valid_from) over (
+        partition by product_id
+        order by valid_from
+      ),
+      date '9999-12-31'
+    ) as valid_to,
+    case
+      when lead(valid_from) over (
+        partition by product_id
+        order by valid_from
+      ) is null then true
+      else false
+    end as is_current
+  from scd2_base
+)
+
+select *
+from scd2_final
+```
 ## Supuestos de limpieza y modelado
 
 - Se conservaron dos snapshots de productos para poder detectar cambios reales de precio entre extracciones. [1]

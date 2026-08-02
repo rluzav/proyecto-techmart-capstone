@@ -69,7 +69,7 @@ proyecto-techmart-capstone/
     └── (capturas o diagramas)
 ```
 
-### Estructura de la versión en GCP
+### Estructura en GCP con Dataform
 ```text
 definitions/
 ├── assertions/
@@ -99,6 +99,13 @@ includes/
 └── macros.js
 workflow_settings.yaml
 ```
+### Estructura BigQuery
+
+![Estructura BigQuery](docs/gcp_bigquery_estructura.PNG)
+
+### Estructura Buckets GCP
+
+![Estructura Buckets GCP](docs/gcp_buckets_estructura.PNG)
 
 ## Proceso de desarrollo
 
@@ -182,6 +189,15 @@ Aquí se muestran las capturas de los resultados obtenidos en SQL Server para la
 ## Dashboard y consumo analítico
 
 Sobre la capa Gold en BigQuery se construyó un dashboard para consumo analítico en Looker Studio / Power BI. Esta visualización permite explotar las métricas del modelo dimensional y validar el uso de `fact_sales` junto con las dimensiones, incluyendo el historial SCD2 de `dim_product`.
+
+### Vista general del dashboard
+![Dashboard general](docs/gcp_dashboard.PNG)
+
+### Vista de tabla dashboard general
+![Vista de tabla dashboard](docs/gcp_query_dashboard.PNG)
+
+### Resumen de Capa Gold
+![Resumen capa Gold](docs/gcp_query_resumen.PNG)
 
 ## Supuestos de limpieza y modelado
 

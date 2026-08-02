@@ -1,10 +1,10 @@
 # Proyecto TechMart Capstone
 
-Proyecto de Data Warehouse desarrollado en SQL Server bajo arquitectura **Bronze / Silver / Gold**. El repositorio integra una fuente externa de productos obtenida desde una API y datos transaccionales internos generados con Python para construir una capa analítica lista para negocio. [1][2]
+Proyecto de Data Warehouse desarrollado en SQL Server bajo arquitectura **Bronze / Silver / Gold** y posteriormente migrado a Google Cloud Platform con BigQuery y Dataform. El repositorio integra una fuente externa de productos obtenida desde una API y datos transaccionales internos generados con Python para construir una capa analítica lista para negocio. [1][2]
 
 ## Objetivo
 
-El objetivo del proyecto es construir un pipeline de datos por capas que permita extraer, limpiar, modelar y analizar información de ventas. Como resultado final, la solución entrega un modelo dimensional en Gold y consultas de negocio orientadas a análisis comercial. [1][2]
+El objetivo del proyecto es construir un pipeline de datos por capas que permita extraer, limpiar, modelar y analizar información de ventas,y posteriormente adaptar esa misma solución a BigQuery y Dataform en Google Cloud Platform. Como resultado final, la solución entrega un modelo dimensional en Gold y consultas de negocio orientadas a análisis comercial. [1][2]
 
 ## Fuente de datos
 
@@ -15,6 +15,14 @@ Este proyecto trabaja con dos fuentes principales:
 
 Además, para poder probar el historial de precios en `dim_product`, se utilizó un segundo snapshot simulado con cambios de precio a través del script `scripts/extraction/simular_dia2.py`. La guía explica que esta simulación es necesaria porque la Fake Store API no cambia precios de forma natural entre extracciones. [1]
 
+## Tecnologías usadas
+
+- SQL Server para la implementación inicial del Data Warehouse. [1]
+- Google BigQuery como motor analítico en la versión migrada a GCP.
+- Dataform para definir y ejecutar transformaciones mediante archivos `.sqlx` y lógica reutilizable en `includes/macros.js`.
+- Python para extracción, generación de datos OLTP y simulación de snapshots.
+- Looker Studio / Power BI para visualización y consumo analítico final.
+- 
 ## Arquitectura
 
 El proyecto sigue la arquitectura Medallion, separando responsabilidades en tres capas: [1][2]
@@ -25,7 +33,7 @@ El proyecto sigue la arquitectura Medallion, separando responsabilidades en tres
 
 Esta separación permite mantener trazabilidad, calidad de datos y una evolución ordenada del pipeline desde la extracción hasta la analítica final. [1]
 
-## Estructura del proyecto
+## Estructura del proyecto SQL SERVER
 
 ```text
 proyecto-techmart-capstone/
@@ -61,6 +69,37 @@ proyecto-techmart-capstone/
     └── (capturas o diagramas)
 ```
 
+### Estructura de la versión en GCP
+```text
+definitions/
+├── assertions/
+├── bronze/
+│   ├── brz_customers.sqlx
+│   ├── brz_order_items.sqlx
+│   ├── brz_orders.sqlx
+│   ├── brz_products_2026_07_30.sqlx
+│   └── brz_products_2026_08_06.sqlx
+├── gold/
+│   ├── dim_customer.sqlx
+│   ├── dim_date.sqlx
+│   ├── dim_product.sqlx
+│   └── fact_sales.sqlx
+├── silver/
+│   ├── slv_api_products.sqlx
+│   ├── slv_customers.sqlx
+│   ├── slv_order_items.sqlx
+│   └── slv_orders.sqlx
+└── sources/
+    ├── src_oltp_customers.sqlx
+    ├── src_oltp_order_items.sqlx
+    ├── src_oltp_orders.sqlx
+    ├── src_products_2026_07_30_raw.sqlx
+    └── src_products_2026_08_06_raw.sqlx
+includes/
+└── macros.js
+workflow_settings.yaml
+```
+
 ## Proceso de desarrollo
 
 ### Fase 0: extracción y simulación
@@ -82,6 +121,10 @@ En Gold se construyó el modelo dimensional del proyecto. Esta capa incluye dime
 ### Fase 4: analítica de negocio
 
 Finalmente, se desarrollaron cuatro consultas de negocio que aplican funciones analíticas y explotan el modelo Gold para responder preguntas comerciales. [1][2]
+
+### Fase 5: migración a GCP con BigQuery y Dataform
+
+Una vez completada la implementación en SQL Server, el proyecto fue migrado a Google Cloud Platform para replicar la arquitectura Bronze / Silver / Gold en BigQuery. En esta versión, las transformaciones fueron modeladas en Dataform mediante archivos `.sqlx`, reutilizando lógica común desde `includes/macros.js` y manteniendo la implementación SCD Type 2 en `dim_product`.
 
 ## Modelo dimensional
 
@@ -136,6 +179,9 @@ Aquí se muestran las capturas de los resultados obtenidos en SQL Server para la
 ### Impacto del cambio de precio
 ![Impacto del cambio de precio](docs/impacto_precio.png)
 
+## Dashboard y consumo analítico
+
+Sobre la capa Gold en BigQuery se construyó un dashboard para consumo analítico en Looker Studio / Power BI. Esta visualización permite explotar las métricas del modelo dimensional y validar el uso de `fact_sales` junto con las dimensiones, incluyendo el historial SCD2 de `dim_product`.
 
 ## Supuestos de limpieza y modelado
 
